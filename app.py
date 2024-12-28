@@ -5,6 +5,9 @@ from src.preprocess import pdf_to_image_dict
 from src.ai import process_image_data
 from src.postprocess import create_dataframe, save_dataframe_to_excel
 
+# Set the page configuration, including the title
+st.set_page_config(page_title="Invoice Processor")
+
 # Set the title of the Streamlit app
 st.title("PDF Invoice Processor")
 
