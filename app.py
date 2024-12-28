@@ -44,21 +44,21 @@ if uploaded_file is not None:
                 st.write("Extracted Data:")
                 st.dataframe(df)
 
-                # Save the DataFrame to an Excel file
-                excel_file_path = os.path.join(temp_dir, "extracted_data.xlsx")
-                save_dataframe_to_excel(df, excel_file_path)
+                # # Save the DataFrame to an Excel file
+                # excel_file_path = os.path.join(temp_dir, "extracted_data.xlsx")
+                # save_dataframe_to_excel(df, excel_file_path)
 
-                # Check if the file was created successfully
-                if os.path.exists(excel_file_path):
-                    # Provide a download link for the Excel file
-                    st.download_button(
-                        label="Download Excel File",
-                        data=open(excel_file_path, "rb").read(),
-                        file_name="extracted_data.xlsx",
-                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                    )
-                else:
-                    st.error("Failed to create the Excel file.")
+                # # Check if the file was created successfully
+                # if os.path.exists(excel_file_path):
+                #     # Provide a download link for the Excel file
+                #     st.download_button(
+                #         label="Download Excel File",
+                #         data=open(excel_file_path, "rb").read(),
+                #         file_name="extracted_data.xlsx",
+                #         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                #     )
+                # else:
+                #     st.error("Failed to create the Excel file.")
             else:
                 st.error("No valid data extracted from the images.")
         else:
