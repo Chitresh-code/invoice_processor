@@ -3,7 +3,7 @@ import os
 import shutil  # Import shutil for directory removal
 from src.preprocess import pdf_to_image_dict
 from src.ai import process_image_data
-from src.postprocess import create_dataframe, save_dataframe_to_excel
+from src.postprocess import create_dataframe, save_dataframe_to_excel, get_config
 
 # Set the page configuration, including the title
 st.set_page_config(page_title="Invoice Processor")
@@ -66,6 +66,16 @@ if uploaded_file is not None:
     else:
         st.error("Failed to convert PDF to images.")
 
+    # Print the configuration data
+    config_data = get_config()
+    if config_data is not None:
+        st.write("Configuration Data:")
+        st.write(f"API Calls: {config_data['last_api_calls']}")
+        st.write(f"Token Count: {config_data['last_token_count']}")
+        st.write(f"Total API Calls: {config_data['api_calls']}")
+        st.write(f"Total Token Count: {config_data['total_token_count']}")
+    else:
+        st.error("Failed to get configuration data.")
     # Clean up temporary files if necessary
     shutil.rmtree(temp_dir)  # Remove the tempDir directory
     st.write("Temporary files cleaned up.")  # Log cleanup message
