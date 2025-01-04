@@ -6,7 +6,16 @@ from src.ai import process_image_data
 from src.postprocess import create_dataframe, save_dataframe_to_excel, get_config
 
 # Set the page configuration, including the title
-st.set_page_config(page_title="Invoice Processor")
+st.set_page_config(page_title="Invoice Extractor", page_icon="📄")
+
+# Hide Streamlit menu and footer
+hide_menu_style = """
+<style>
+#MainMenu {visibility: hidden;}
+footer {visibility: hidden;}
+</style>
+"""
+st.markdown(hide_menu_style, unsafe_allow_html=True)
 
 # Set the title of the Streamlit app
 st.title("PDF Invoice Processor")
