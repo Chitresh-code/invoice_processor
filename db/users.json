@@ -14,5 +14,14 @@
         "role": "user",
         "api_calls": 40,
         "total_token_count": 28913
+    },
+    {
+        "username": "testuser",
+        "name": "Test User",
+        "email": "test@gmail.com",
+        "password": "test",
+        "role": "user",
+        "api_calls": 0,
+        "total_token_count": 0
     }
 ]
