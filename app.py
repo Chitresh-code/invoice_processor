@@ -162,9 +162,6 @@ def main():
     # Hide Streamlit menu and footer
     hide_menu_style = """
     <style>
-    #MainMenu {
-        visibility: hidden;
-    }
     .stToolbarActions .stToolbarActionButton {
         visibility: hidden;
     }
