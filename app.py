@@ -229,7 +229,7 @@ def main():
         st.session_state.app_enabled = read_app_state()
 
     # Sidebar for navigation
-    st.sidebar.title("User Authentication")
+    st.sidebar.title("Digivista InfoTech")
     if st.session_state.logged_in:
         if st.sidebar.button("Home", icon="🏠", use_container_width=True):
             st.session_state.page = "home"
