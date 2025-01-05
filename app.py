@@ -94,17 +94,17 @@ def invoice_extractor():
             f.write(uploaded_file.getbuffer())
 
         # Convert PDF to image dictionary
-        st.write("Converting PDF to images...")
+        st.write("Preprocessing the PDF...")
         image_dict = pdf_to_image_dict(pdf_path)
 
         if image_dict is not None:
             # Process the image data to extract table information
-            st.write("Processing images to extract table data...")
+            st.write("Processing the PDF Data...")
             processed_data = process_image_data(st.session_state.username, image_dict)
 
             if processed_data is not None:
                 # Create a DataFrame from the processed data
-                st.write("Creating DataFrame from extracted data...")
+                st.write("Creating the table...")
                 df = create_dataframe(processed_data)
 
                 if df is not None:
@@ -128,11 +128,11 @@ def invoice_extractor():
                     else:
                         st.error("Failed to create the Excel file.")
                 else:
-                    st.error("No valid data extracted from the images.")
+                    st.error("No valid data extracted from the PDF")
             else:
-                st.error("Failed to process image data.")
+                st.error("Failed to process the data.")
         else:
-            st.error("Failed to convert PDF to images.")
+            st.error("Failed to preprocess the PDF.")
 
         # Print the configuration data
         api_calls, token_count = get_config(st.session_state.username)
@@ -229,7 +229,7 @@ def main():
         st.session_state.app_enabled = read_app_state()
 
     # Sidebar for navigation
-    st.sidebar.title("Digivista InfoTech")
+    st.sidebar.title("DigiVista InfoTech")
     if st.session_state.logged_in:
         if st.sidebar.button("Home", icon="🏠", use_container_width=True):
             st.session_state.page = "home"

@@ -63,7 +63,7 @@ def extract_table_from_image(image_data: str) -> Optional[str]:
         # Extract the JSON string from the response, cleaning any unnecessary parts
         if response_text.startswith("```json\n") and response_text.endswith("\n```"):
             json_text = response_text[8:-4].strip()  # Strip the ` ```json\n` and `\n``` `
-            logger.info(f"Response: {json_text}")
+            
             return json_text, total_token_count
         else:
             raise ValueError("Response does not contain valid JSON.")
