@@ -4,3 +4,4 @@ streamlit
 pandas
 Pillow
 google-generativeai
+streamlit_cookies_manager
