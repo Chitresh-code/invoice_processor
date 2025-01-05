@@ -2,6 +2,7 @@ import streamlit as st
 import os
 import shutil  # Import shutil for directory removal
 import pandas as pd
+import json
 from src.preprocess import pdf_to_image_dict
 from src.ai import process_image_data
 from src.postprocess import create_dataframe, save_dataframe_to_excel, get_config
@@ -20,7 +21,63 @@ cookies = EncryptedCookieManager(
 if not cookies.ready():
     st.stop()
 
+USERS_FILE = "db/users.json"
+
+def read_app_state():
+    with open(USERS_FILE, "r") as file:
+        users = json.load(file)
+        for user in users:
+            if user["username"] == "admin" and user["role"] == "admin":
+                return user.get("app_state", "enabled") == "enabled"
+    return True
+
+def write_app_state(enabled):
+    with open(USERS_FILE, "r") as file:
+        users = json.load(file)
+    for user in users:
+        if user["role"] == "admin":
+            user["app_state"] = "enabled" if enabled else "disabled"
+            break
+    with open(USERS_FILE, "w") as file:
+        json.dump(users, file, indent=4)
+
+def toggle_app_state():
+    if "app_enabled" not in st.session_state:
+        st.session_state.app_enabled = read_app_state()
+
+    st.session_state.app_enabled = not st.session_state.app_enabled
+    write_app_state(st.session_state.app_enabled)
+    st.success(f"App {'enabled' if st.session_state.app_enabled else 'disabled'} successfully!")
+
+def admin_dashboard():
+    st.title("Admin Dashboard")
+    st.write(f"Welcome, {st.session_state.username}!")
+    
+    # Display the list of users
+    st.write("List of Users:")
+    users, result = get_users()
+    if result:
+        if users is not None:
+            # Creating a DataFrame from the list of users
+            user_df = pd.DataFrame(users)
+            if 'app_state' in user_df.columns:
+                user_df.drop(columns=["app_state"], inplace=True)
+            st.dataframe(user_df)
+    else:
+        st.error(users)
+    
+    # Toggle app state
+    if st.button("Toggle App State"):
+        toggle_app_state()
+
 def invoice_extractor():
+    if "app_enabled" not in st.session_state:
+        st.session_state.app_enabled = read_app_state()
+
+    if not st.session_state.app_enabled:
+        st.write("The app is currently not working as intended. Please contact the administrator for more information.")
+        return
+
     st.write("Invoice Extractor Page")
     # File uploader for PDF files
     uploaded_file = st.file_uploader("Upload a PDF file", type=["pdf"])
@@ -88,21 +145,6 @@ def invoice_extractor():
         # Clean up temporary files if necessary
         shutil.rmtree(temp_dir)  # Remove the tempDir directory
         st.write("Temporary files cleaned up.")  # Log cleanup message
-        
-def admin_dashboard():
-    st.title("Admin Dashboard")
-    st.write(f"Welcome, {st.session_state.username}!")
-    
-    # Display the list of users
-    st.write("List of Users:")
-    users, result = get_users()
-    if result:
-        if users is not None:
-            # Creating a DataFrame from the list of users
-            user_df = pd.DataFrame(users)
-            st.dataframe(user_df)
-    else:
-        st.error(users)
 
 def user_login():
     st.title("Login")
@@ -183,6 +225,8 @@ def main():
         st.session_state.page = "home"
     if 'username' not in st.session_state:
         st.session_state.username = cookies.get("username", "")
+    if 'app_enabled' not in st.session_state:
+        st.session_state.app_enabled = read_app_state()
 
     # Sidebar for navigation
     st.sidebar.title("User Authentication")
