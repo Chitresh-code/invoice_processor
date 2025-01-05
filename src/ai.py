@@ -69,7 +69,7 @@ def extract_table_from_image(image_data: str) -> Optional[str]:
             raise ValueError("Response does not contain valid JSON.")
     return None
 
-def process_image_data(image_dict: dict) -> Optional[dict]:
+def process_image_data(username: str, image_dict: dict) -> Optional[dict]:
     """
     Processes a dictionary of image data to extract table information.
     """
@@ -94,7 +94,7 @@ def process_image_data(image_dict: dict) -> Optional[dict]:
                 logger.error(f"Error processing image for page {key}: {e}")
                 continue
         
-        config(api_calls, total_token_count)  # Update the configuration
+        config(username, api_calls, total_token_count)  # Update the configuration
         logger.info(f"Total API calls made: {api_calls}")
         return image_dict # Return the dictionary after changing it
     except Exception as e:

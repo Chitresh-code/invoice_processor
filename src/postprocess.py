@@ -42,11 +42,11 @@ def save_dataframe_to_excel(df: pd.DataFrame, file_path: str) -> None:
     except Exception as e:
         logger.error(f"Error saving DataFrame to Excel: {e}")  # Log the error
 
-def config(api_calls: int, total_token_count: int):
+def config(username: str, api_calls: int, total_token_count: int):
     """
     Configuration function for postprocess module to count API calls and total token usage.
     """
-    config_filepath = os.path.join(os.path.dirname(__file__), "../config/config.json")
+    config_filepath = os.path.join(os.path.dirname(__file__), "../db/users.json")
     config_filepath = os.path.abspath(config_filepath)  # Ensure the path is absolute
     
     try:
@@ -57,10 +57,10 @@ def config(api_calls: int, total_token_count: int):
     except json.JSONDecodeError:
         logger.error(f"Error decoding JSON from the configuration file at {config_filepath}")
 
-    config_data["api_calls"] += api_calls
-    config_data["total_token_count"] += total_token_count
-    config_data["last_api_calls"] = api_calls
-    config_data["last_token_count"] = total_token_count
+    for users in config_data:
+        if username == users['username'] and users['role'] == 'user':
+            users['api_calls'] += api_calls
+            users['total_token_count'] += total_token_count
 
     try:
         with open(config_filepath, "w") as file:
@@ -68,17 +68,19 @@ def config(api_calls: int, total_token_count: int):
     except IOError:
         logger.error(f"Error writing to the configuration file at {config_filepath}")
         
-def get_config() -> Optional[dict]:
+def get_config(username: str) -> Optional[dict]:
     """
     Function to get the configuration data from the config file.
     """
-    config_filepath = os.path.join(os.path.dirname(__file__), "../config/config.json")
+    config_filepath = os.path.join(os.path.dirname(__file__), "../db/users.json")
     config_filepath = os.path.abspath(config_filepath)  # Ensure the path is absolute
     
     try:
         with open(config_filepath, "r") as file:
             config_data = json.load(file)
-            return config_data
+            for users in config_data:
+                if username == users['username'] and users['role'] == 'user':
+                    return users["api_calls"], users["total_token_count"]
     except FileNotFoundError:
         logger.error(f"Configuration file not found at {config_filepath}")
     except json.JSONDecodeError:
