@@ -6,3 +6,4 @@ Pillow
 google-generativeai
 streamlit_cookies_manager
 openpyxl
+psycopg2-binary
