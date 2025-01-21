@@ -5,8 +5,9 @@ import pandas as pd
 import json
 from src.preprocess import pdf_to_image_dict
 from src.ai import process_image_data
-from src.postprocess import create_dataframe, save_dataframe_to_excel, get_config
-from src.security import login, register, change_password, get_users, check_role
+from src.postprocess import create_dataframe, save_dataframe_to_excel #, get_config
+# from src.security import login, register, change_password, get_users, check_role
+from src.database import login, register, change_password, get_users, check_role, get_config
 from streamlit_cookies_manager import EncryptedCookieManager
 
 # Set the page configuration, including the title
@@ -70,6 +71,60 @@ def admin_dashboard():
     if st.button("Toggle App State"):
         toggle_app_state()
 
+def download_page():
+    st.title("Download Extracted Data")
+    
+    if st.session_state.extracted_data is not None:
+        # Print the configuration data
+        user_config, status = get_config(st.session_state.username)
+        
+        if not status:
+            st.error("Failed to get configuration data.")
+            return
+        
+        # Get the API calls and token count from the user configuration
+        api_calls = user_config.get("api_calls")
+        token_count = user_config.get("total_token_count") 
+        
+        if api_calls is not None and token_count is not None:
+            st.write("Configuration Data:")
+            st.write(f"Total API Calls by {st.session_state.username}: {api_calls}")
+            st.write(f"Total Token Usage by {st.session_state.username}: {token_count}")
+        else:
+            st.error("Failed to get configuration data.")
+        try:
+            if st.session_state.extracted_data is not None:
+                # Display the DataFrame
+                st.write("Extracted Data:")
+                st.dataframe(st.session_state.extracted_data)
+
+                
+                # Create the tempDir directory if it doesn't exist
+                temp_dir = "tempDir"
+                if not os.path.exists(temp_dir):
+                    os.makedirs(temp_dir, exist_ok=True)
+                    
+                # Save the DataFrame to an Excel file
+                excel_file_path = os.path.join(temp_dir, "extracted_data.xlsx")
+                save_dataframe_to_excel(st.session_state.extracted_data, excel_file_path)
+            
+                # Provide a download link for the Excel file
+                st.download_button(
+                    label="Download Excel File",
+                    data=open(excel_file_path, "rb").read(),
+                    file_name="extracted_data.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    on_click=lambda: setattr(st.session_state, 'page', 'home')
+                )
+            else:
+                st.error("Failed to create the Excel file.")
+        except Exception as e:
+            st.error(f"Error downloading the Excel file: {e}")
+        finally:
+            # Clean up temporary files if necessary
+            shutil.rmtree("tempDir")  # Remove the tempDir directory
+            st.session_state.pop("excel_file_path", None)
+
 def invoice_extractor():
     if "app_enabled" not in st.session_state:
         st.session_state.app_enabled = read_app_state()
@@ -81,12 +136,13 @@ def invoice_extractor():
     st.write("Invoice Extractor Page")
     # File uploader for PDF files
     uploaded_file = st.file_uploader("Upload a PDF file", type=["pdf"])
+    st.session_state.extracted_data = None
 
     if uploaded_file is not None:
         # Create the tempDir directory if it doesn't exist
         temp_dir = "tempDir"
         if not os.path.exists(temp_dir):
-            os.makedirs(temp_dir)
+            os.makedirs(temp_dir, exist_ok=True)
 
         # Save the uploaded file temporarily
         pdf_path = os.path.join(temp_dir, uploaded_file.name)
@@ -108,43 +164,22 @@ def invoice_extractor():
                 df = create_dataframe(processed_data)
 
                 if df is not None:
-                    # Display the DataFrame
-                    st.write("Extracted Data:")
-                    st.dataframe(df)
-
-                    # Save the DataFrame to an Excel file
-                    excel_file_path = os.path.join(temp_dir, "extracted_data.xlsx")
-                    save_dataframe_to_excel(df, excel_file_path)
-
-                    # Check if the file was created successfully
-                    if os.path.exists(excel_file_path):
-                        # Provide a download link for the Excel file
-                        st.download_button(
-                            label="Download Excel File",
-                            data=open(excel_file_path, "rb").read(),
-                            file_name="extracted_data.xlsx",
-                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                        )
-                    else:
-                        st.error("Failed to create the Excel file.")
+                    # Redirect to the download page
+                    st.success("Data extracted successfully!")
+                    st.session_state.extracted_data = df
+                    
+                    st.session_state.page = "download"
+                    st.rerun()
                 else:
                     st.error("No valid data extracted from the PDF")
             else:
                 st.error("Failed to process the data.")
         else:
             st.error("Failed to preprocess the PDF.")
-
-        # Print the configuration data
-        api_calls, token_count = get_config(st.session_state.username)
-        if api_calls is not None and token_count is not None:
-            st.write("Configuration Data:")
-            st.write(f"Total API Calls by {st.session_state.username}: {api_calls}")
-            st.write(f"Total Token Usage by {st.session_state.username}: {token_count}")
-        else:
-            st.error("Failed to get configuration data.")
-        # Clean up temporary files if necessary
-        shutil.rmtree(temp_dir)  # Remove the tempDir directory
-        st.write("Temporary files cleaned up.")  # Log cleanup message
+            
+    # Clear the uploaded file
+    if uploaded_file is not None:
+        uploaded_file.close() 
 
 def user_login():
     st.title("Login")
@@ -257,6 +292,8 @@ def main():
                     invoice_extractor()
                 elif st.session_state.page == "change_password":
                     change_user_password()
+                elif st.session_state.page == "download":
+                    download_page()
         else:
             st.error("User not authenticated properly! Please login again and if the issue persists, try creating a new account.")
     else:

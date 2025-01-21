@@ -6,7 +6,8 @@ from src.logger import setup_logger  # Import the logger
 from typing import Optional  # Import Optional for type hinting
 from PIL import Image
 import io
-from src.postprocess import config
+# from src.postprocess import config
+from src.database import write_user_details
 
 load_dotenv()  # Load environment variables from .env file
 
@@ -28,7 +29,7 @@ def extract_table_from_image(image_data: str) -> Optional[str]:
     {{
             "row": "<row number>",
             "item_number": "<item number>",
-            "description": "<description containing commodity code, country of origin, dispatch date, etc.>",
+            "description": "<description>",
             "net_weight": "<net_weight>",
             "quantity": "<quantity>",
             "unit": "<unit>",
@@ -38,8 +39,18 @@ def extract_table_from_image(image_data: str) -> Optional[str]:
     }},
     ...
     Note that the values and table headers in the invoice can change.
-    Make sure descriptions are detailed and include all relevant information.
+    In the field description if there are additional details, make sure to include them in a separate field.
+    For the extra fields in the description, you can use the following format:
+     - The extra fields will be in the format "extra_field_name: extra_field_value".
+     In the json you can add them as:
+    {{
+        "extra_field_name1": "<extra_field_value2>",
+        "extra_field_name2": "<extra_field_value2>",
+        ...
+    }}
+    - Do not write the extra fields as extra_field_name1: extra_field_value1, etc. use the actual names of the fields.
     If there is no table, return None.
+    Make sure the field names are written in small letters with underscores.
     Ensure that the JSON is not complex and can be easily converted to a Pandas DataFrame.
     """
     
@@ -94,7 +105,8 @@ def process_image_data(username: str, image_dict: dict) -> Optional[dict]:
                 logger.error(f"Error processing image for page {key}: {e}")
                 continue
         
-        config(username, api_calls, total_token_count)  # Update the configuration
+        # config(username, api_calls, total_token_count)  # Update the configuration
+        write_user_details(username, api_calls, total_token_count)  # Update the configuration
         logger.info(f"Total API calls made: {api_calls}")
         return image_dict # Return the dictionary after changing it
     except Exception as e:
