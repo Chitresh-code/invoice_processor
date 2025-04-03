@@ -23,23 +23,21 @@ def extract_table_from_image(image_data: str) -> Optional[str]:
     Extracts the table of items from an invoice image using the Gemini API.
     """
     prompt = """
-    You are an expert in understanding invoices.
-    Extract the table of items from the invoice in a simple JSON format.
+    You are an expert in understanding bank statements.
+    Extract the table of items from the bank statement in a simple JSON format.
     The JSON can have a structure like this:
     {{
             "row": "<row number>",
-            "item_number": "<item number>",
+            "date": "<date>",
             "description": "<description>",
-            "net_weight": "<net_weight>",
-            "quantity": "<quantity>",
-            "unit": "<unit>",
-            "price": "<price>",
-            "amount": "<amount>",
-            "preferential_status": "<preferential_status>", (P, NP, or N/A)
+            "withdrawal": "<withdrawal amount>",
+            "deposit": "<deposit amount>",
+            "category": "<category>",
+            "updated_balance": "<updated balance>"
     }},
     ...
-    Note that the values and table headers in the invoice can change.
-    In the field description if there are additional details, make sure to include them in a separate field.
+    Note that the values and table headers in the statement are not subject to change.
+    In the field description if there are additional details, or fields, please include them in the JSON.
     For the extra fields in the description, you can use the following format:
      - The extra fields will be in the format "extra_field_name: extra_field_value".
      In the json you can add them as:
@@ -106,7 +104,7 @@ def process_image_data(username: str, image_dict: dict) -> Optional[dict]:
                 continue
         
         # config(username, api_calls, total_token_count)  # Update the configuration
-        write_user_details(username, api_calls, total_token_count)  # Update the configuration
+        # write_user_details(username, api_calls, total_token_count)  # Update the configuration
         logger.info(f"Total API calls made: {api_calls}")
         return image_dict # Return the dictionary after changing it
     except Exception as e:
