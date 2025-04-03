@@ -1,20 +1,22 @@
 import os
 import requests
 from dotenv import load_dotenv
-import google.generativeai as genai
+# import google.generativeai as genai
 from src.logger import setup_logger  # Import the logger
 from typing import Optional  # Import Optional for type hinting
 from PIL import Image
+from google import genai
 import io
 # from src.postprocess import config
 from src.database import write_user_details
 
 load_dotenv()  # Load environment variables from .env file
 
-genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
+client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))  # Initialize the client
+# genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
 # Load Gemini 1.5 Flash
-model = genai.GenerativeModel('gemini-1.5-flash')
+# model = genai.GenerativeModel('gemini-2.5-pro-exp-03-25')
 
 logger = setup_logger(__name__)  # Set up the logger
 
@@ -54,7 +56,10 @@ def extract_table_from_image(image_data: str) -> Optional[str]:
     
     try:
         # Call the Gemini API using the model
-        response = model.generate_content([image_data, prompt])
+        response = client.models.generate_content(
+            contents=[image_data, prompt],
+            model='gemini-1.5-pro'
+            )
         
         # Extract the total_token_count
         total_token_count = response.usage_metadata.total_token_count
