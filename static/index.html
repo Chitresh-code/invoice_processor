@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Invoice Extractor</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(to right, #f9f9f9, #e0e0e0);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+    .container {
+      background: white;
+      padding: 2rem;
+      border-radius: 1rem;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      max-width: 500px;
+      width: 100%;
+      text-align: center;
+    }
+    input[type="file"] {
+      margin: 1rem 0;
+    }
+    button {
+      background: #4f46e5;
+      color: white;
+      border: none;
+      padding: 0.6rem 1.2rem;
+      border-radius: 0.5rem;
+      cursor: pointer;
+      font-size: 1rem;
+      margin: 0.5rem;
+    }
+    button:disabled {
+      background: #a5b4fc;
+      cursor: not-allowed;
+    }
+    .message {
+      margin-top: 1rem;
+      font-size: 0.9rem;
+    }
+    .success {
+      color: green;
+    }
+    .error {
+      color: red;
+    }
+    a {
+      text-decoration: none;
+      color: #2563eb;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>📄 Invoice Extractor</h2>
+    <input type="file" id="pdfFile" accept="application/pdf">
+    <br>
+    <button id="uploadBtn">Upload & Extract</button>
+    <button id="clearBtn">Clear All Data</button>
+    <div class="message" id="responseMsg"></div>
+  </div>
+
+  <script>
+    const uploadBtn = document.getElementById('uploadBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    const pdfFile = document.getElementById('pdfFile');
+    const responseMsg = document.getElementById('responseMsg');
+
+    uploadBtn.addEventListener('click', async () => {
+      const file = pdfFile.files[0];
+      if (!file) return;
+
+      uploadBtn.disabled = true;
+      responseMsg.textContent = 'Uploading...';
+      responseMsg.className = 'message';
+
+      const formData = new FormData();
+      formData.append('pdf', file);
+      formData.append('username', 'demo_user');
+
+      try {
+        const response = await fetch('/extract-invoice/', {
+          method: 'POST',
+          body: formData,
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+          const filename = result.excel_path.split(/[\\/]/).pop();
+          responseMsg.innerHTML = `✅ Extracted! <a href="/data/${filename}" download>Click here to download Excel</a>`;
+          responseMsg.classList.add('success');
+        } else {
+          throw new Error(result.error || 'Failed to extract');
+        }
+      } catch (err) {
+        responseMsg.textContent = `❌ ${err.message}`;
+        responseMsg.classList.add('error');
+      } finally {
+        uploadBtn.disabled = false;
+      }
+    });
+
+    clearBtn.addEventListener('click', async () => {
+      clearBtn.disabled = true;
+      responseMsg.textContent = 'Clearing data...';
+      responseMsg.className = 'message';
+
+      try {
+        const response = await fetch('/clear-data/', { method: 'DELETE' });
+        const result = await response.json();
+        if (response.ok) {
+          responseMsg.textContent = result.message;
+          responseMsg.classList.add('success');
+        } else {
+          throw new Error(result.error || 'Failed to clear');
+        }
+      } catch (err) {
+        responseMsg.textContent = `❌ ${err.message}`;
+        responseMsg.classList.add('error');
+      } finally {
+        clearBtn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>

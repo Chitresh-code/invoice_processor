@@ -1,0 +1,13 @@
+version: "3.9"
+
+services:
+  invoice-extractor:
+    build: .
+    container_name: invoice-extractor-app
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+      - ./static:/app/static
+    environment:
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}  # Make sure this is defined in a `.env` file

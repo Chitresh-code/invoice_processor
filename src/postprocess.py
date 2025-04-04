@@ -1,29 +1,26 @@
-from src.logger import setup_logger  # Import the logger
-import pandas as pd  # Import Pandas for DataFrame creation
-from typing import Optional, Dict  # Import types for type hinting
-from io import StringIO  # Import StringIO
-import json  # Import json module
-import os  # Import os module
+import pandas as pd
+import json
+from typing import Optional, Dict
+from src.logger import setup_logger
 
-logger = setup_logger(__name__)  # Set up the logger
+logger = setup_logger(__name__)
 
 def create_dataframe(image_dict: Dict[str, Optional[str]]) -> Optional[pd.DataFrame]:
-    """
-    Creates a Pandas DataFrame from the JSON data in the image_dict.
-    """
-    json_data = []  # Initialize an empty list to hold JSON data
+    json_data = []
     for key, value in image_dict.items():
-        if value != 'None':  # Check if value is not None
+        if value != 'None':
             try:
-                # Convert the JSON string to a Python object (list of dictionaries)
                 data = json.loads(value)
-                json_data.extend(data)  # Extend the list with the new data
+                if isinstance(data, list):
+                    json_data.extend(data)
+                elif isinstance(data, dict):
+                    json_data.append(data)
+                logger.info(f"Parsed JSON from page {key} successfully.")
             except json.JSONDecodeError as e:
-                logger.error(f"Error decoding JSON for key {key}: {e}")  # Log JSON decoding errors
+                logger.error(f"Error decoding JSON for key {key}: {e}")
                 continue
 
     if json_data:
-        # Create a DataFrame from the list of dictionaries
         df = pd.DataFrame(json_data)
         logger.info("DataFrame created successfully.")
         return df
@@ -32,57 +29,9 @@ def create_dataframe(image_dict: Dict[str, Optional[str]]) -> Optional[pd.DataFr
         return None
 
 def save_dataframe_to_excel(df: pd.DataFrame, file_path: str) -> None:
-    """
-    Saves the given DataFrame to an Excel file.
-    """
     try:
         with pd.ExcelWriter(file_path) as writer:
-            df.to_excel(writer, sheet_name='Extracted Data', index=False)  # Write DataFrame to a sheet
-        logger.info(f"DataFrame successfully saved to {file_path}.")  # Log success message
+            df.to_excel(writer, sheet_name='Extracted Data', index=False)
+        logger.info(f"DataFrame successfully saved to {file_path}.")
     except Exception as e:
-        logger.error(f"Error saving DataFrame to Excel: {e}")  # Log the error
-
-def config(username: str, api_calls: int, total_token_count: int):
-    """
-    Configuration function for postprocess module to count API calls and total token usage.
-    """
-    config_filepath = os.path.join(os.path.dirname(__file__), "../db/users.json")
-    config_filepath = os.path.abspath(config_filepath)  # Ensure the path is absolute
-    
-    try:
-        with open(config_filepath, "r") as file:
-            config_data = json.load(file)
-    except FileNotFoundError:
-        logger.error(f"Configuration file not found at {config_filepath}")
-    except json.JSONDecodeError:
-        logger.error(f"Error decoding JSON from the configuration file at {config_filepath}")
-
-    for users in config_data:
-        if username == users['username'] and users['role'] == 'user':
-            users['api_calls'] += api_calls
-            users['total_token_count'] += total_token_count
-
-    try:
-        with open(config_filepath, "w") as file:
-            json.dump(config_data, file, indent=4)
-    except IOError:
-        logger.error(f"Error writing to the configuration file at {config_filepath}")
-        
-def get_config(username: str) -> Optional[dict]:
-    """
-    Function to get the configuration data from the config file.
-    """
-    config_filepath = os.path.join(os.path.dirname(__file__), "../db/users.json")
-    config_filepath = os.path.abspath(config_filepath)  # Ensure the path is absolute
-    
-    try:
-        with open(config_filepath, "r") as file:
-            config_data = json.load(file)
-            for users in config_data:
-                if username == users['username'] and users['role'] == 'user':
-                    return users["api_calls"], users["total_token_count"]
-    except FileNotFoundError:
-        logger.error(f"Configuration file not found at {config_filepath}")
-    except json.JSONDecodeError:
-        logger.error(f"Error decoding JSON from the configuration file at {config_filepath}")
-    return None
+        logger.error(f"Error saving DataFrame to Excel: {e}")

@@ -1,118 +1,66 @@
 import os
-import requests
+import io
 from dotenv import load_dotenv
-# import google.generativeai as genai
-from src.logger import setup_logger  # Import the logger
-from typing import Optional  # Import Optional for type hinting
+from typing import Optional
 from PIL import Image
 from google import genai
-import io
-# from src.postprocess import config
-from src.database import write_user_details
+from src.logger import setup_logger
 
-load_dotenv()  # Load environment variables from .env file
-
-client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))  # Initialize the client
-# genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
-
-# Load Gemini 1.5 Flash
-# model = genai.GenerativeModel('gemini-2.5-pro-exp-03-25')
-
-logger = setup_logger(__name__)  # Set up the logger
+load_dotenv()
+client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
+logger = setup_logger(__name__)
 
 def extract_table_from_image(image_data: str) -> Optional[str]:
-    """
-    Extracts the table of items from an invoice image using the Gemini API.
-    """
     prompt = """
     You are an expert in understanding bank statements.
     Extract the table of items from the bank statement in a simple JSON format.
-    The JSON can have a structure like this:
-    {{
-            "row": "<row number>",
-            "date": "<date>",
-            "description": "<description>",
-            "withdrawal": "<withdrawal amount>",
-            "deposit": "<deposit amount>",
-            "category": "<category>",
-            "updated_balance": "<updated balance>"
-    }},
-    ...
-    Note that the values and table headers in the statement are not subject to change.
-    In the field description if there are additional details, or fields, please include them in the JSON.
-    For the extra fields in the description, you can use the following format:
-     - The extra fields will be in the format "extra_field_name: extra_field_value".
-     In the json you can add them as:
-    {{
-        "extra_field_name1": "<extra_field_value2>",
-        "extra_field_name2": "<extra_field_value2>",
-        ...
-    }}
-    - Do not write the extra fields as extra_field_name1: extra_field_value1, etc. use the actual names of the fields.
+    The JSON should use lowercase field names with underscores and should be easily convertible to a Pandas DataFrame.
     If there is no table, return None.
-    Make sure the field names are written in small letters with underscores.
-    Ensure that the JSON is not complex and can be easily converted to a Pandas DataFrame.
     """
-    
     try:
-        # Call the Gemini API using the model
         response = client.models.generate_content(
             contents=[image_data, prompt],
-            model='gemini-1.5-pro'
-            )
-        
-        # Extract the total_token_count
+            model='gemini-2.0-flash',
+        )
         total_token_count = response.usage_metadata.total_token_count
-        
     except Exception as e:
-        logger.error(f"Error calling Gemini API: {e}")  # Log the error
+        logger.error(f"Error calling Gemini API: {e}")
         return None
-    
+
     if response:
         response_text = response.text.strip()
-
         if not response_text:
-            raise ValueError("Response is empty after generation.")
-
-        # Extract the JSON string from the response, cleaning any unnecessary parts
-        if response_text.startswith("```json\n") and response_text.endswith("\n```"):
-            json_text = response_text[8:-4].strip()  # Strip the ` ```json\n` and `\n``` `
-            
+            raise ValueError("Response is empty.")
+        if response_text.startswith("```json") and response_text.endswith("```"):
+            json_text = response_text[8:-3].strip()
             return json_text, total_token_count
         else:
             raise ValueError("Response does not contain valid JSON.")
     return None
 
 def process_image_data(username: str, image_dict: dict) -> Optional[dict]:
-    """
-    Processes a dictionary of image data to extract table information.
-    """
-    if not image_dict:  # Check if the dictionary is empty
-        logger.error("Image dictionary is None or empty")  # Log the error
+    if not image_dict:
+        logger.error("Image dictionary is empty")
         return None
-    
     try:
         total_token_count = 0
         api_calls = 0
         for key, image_bytes in image_dict.items():
             try:
-                # Convert bytes to a PIL Image
                 image = Image.open(io.BytesIO(image_bytes))
-                
-                # Call the Gemini API with the PIL Image
                 result, token_count = extract_table_from_image(image)
+                logger.info(f"Extracted data for page {key} with token count: {token_count}")
+                if not result:
+                    logger.warning(f"No data extracted for page {key}")
+                    continue
                 image_dict[key] = result
                 api_calls += 1
                 total_token_count += token_count
             except Exception as e:
                 logger.error(f"Error processing image for page {key}: {e}")
                 continue
-        
-        # config(username, api_calls, total_token_count)  # Update the configuration
-        # write_user_details(username, api_calls, total_token_count)  # Update the configuration
         logger.info(f"Total API calls made: {api_calls}")
-        return image_dict # Return the dictionary after changing it
+        return image_dict
     except Exception as e:
-        logger.error(f"Error processing image data: {e}")  # Log the error
+        logger.error(f"Error processing image data: {e}")
         return None
-

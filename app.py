@@ -1,70 +1,76 @@
-import streamlit as st
-import os
+from fastapi import FastAPI, UploadFile, File
+from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
 import shutil
-import pandas as pd
+import os
 from src.preprocess import pdf_to_image_dict
 from src.ai import process_image_data
 from src.postprocess import create_dataframe, save_dataframe_to_excel
 
-# Set page configuration
-st.set_page_config(page_title="Simple Invoice Extractor", page_icon="📄", layout="centered")
+app = FastAPI()
 
-def main():
-    st.title("📄 Simple PDF Invoice Extractor")
-    st.write("Upload a PDF invoice to extract table data.")
+# Enable CORS for frontend interaction
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-    uploaded_file = st.file_uploader("Upload a PDF file", type=["pdf"])
-    extracted_df = None
+# Serve static folders
+app.mount("/static", StaticFiles(directory="static"), name="static")
+app.mount("/data", StaticFiles(directory="data"), name="data")
 
-    if uploaded_file is not None:
-        # Create a temp directory to store the PDF
-        temp_dir = "tempDir"
-        os.makedirs(temp_dir, exist_ok=True)
+@app.get("/", response_class=HTMLResponse)
+async def serve_index():
+    with open("static/index.html", "r", encoding="utf-8") as f:
+        return f.read()
 
-        # Save uploaded PDF
-        pdf_path = os.path.join(temp_dir, uploaded_file.name)
-        with open(pdf_path, "wb") as f:
-            f.write(uploaded_file.getbuffer())
+@app.post("/extract-invoice/")
+async def extract_invoice_data_from_pdf_api(pdf: UploadFile = File(...), username: str = "local_user"):
+    temp_dir = "tempDir"
+    os.makedirs(temp_dir, exist_ok=True)
+    pdf_path = os.path.join(temp_dir, pdf.filename)
 
-        # Preprocess PDF into images
-        st.write("🔄 Preprocessing the PDF...")
-        image_dict = pdf_to_image_dict(pdf_path)
+    with open(pdf_path, "wb") as buffer:
+        shutil.copyfileobj(pdf.file, buffer)
 
-        if image_dict is not None:
-            # Process image data using AI model
-            st.write("🤖 Extracting data...")
-            processed_data = process_image_data("anonymous_user", image_dict)  # Placeholder username
-
-            if processed_data is not None:
-                # Convert to DataFrame
-                st.write("📊 Building table...")
-                extracted_df = create_dataframe(processed_data)
-
-                if extracted_df is not None:
-                    st.success("✅ Data extracted successfully!")
-                    st.dataframe(extracted_df)
-
-                    # Save to Excel
-                    excel_file_path = os.path.join(temp_dir, "extracted_data.xlsx")
-                    save_dataframe_to_excel(extracted_df, excel_file_path)
-
-                    # Download button
-                    st.download_button(
-                        label="⬇️ Download Excel File",
-                        data=open(excel_file_path, "rb").read(),
-                        file_name="extracted_data.xlsx",
-                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    )
-                else:
-                    st.error("⚠️ No valid data extracted from the PDF.")
-            else:
-                st.error("❌ Failed to process the PDF.")
-        else:
-            st.error("❌ Failed to preprocess the PDF.")
-
-        # Cleanup
-        uploaded_file.close()
+    image_dict = pdf_to_image_dict(pdf_path)
+    if image_dict is None:
         shutil.rmtree(temp_dir)
+        return {"error": "Failed to preprocess the PDF."}
 
-if __name__ == "__main__":
-    main()
+    processed_data = process_image_data(username, image_dict)
+    if processed_data is None:
+        shutil.rmtree(temp_dir)
+        return {"error": "Failed to process the PDF."}
+
+    extracted_df = create_dataframe(processed_data)
+    if extracted_df is None:
+        shutil.rmtree(temp_dir)
+        return {"error": "No valid data extracted from the PDF."}
+
+    output_dir = "data"
+    os.makedirs(output_dir, exist_ok=True)
+    excel_file_path = os.path.join(output_dir, f"{os.path.splitext(pdf.filename)[0]}_extracted.xlsx")
+    save_dataframe_to_excel(extracted_df, excel_file_path)
+
+    shutil.rmtree(temp_dir)
+    return {"message": "✅ Data extracted successfully.", "excel_path": excel_file_path}
+
+@app.delete("/clear-data/")
+async def clear_data_folder():
+    folder = "data"
+    if not os.path.exists(folder):
+        return {"message": "Nothing to clear."}
+
+    try:
+        for filename in os.listdir(folder):
+            file_path = os.path.join(folder, filename)
+            if os.path.isfile(file_path):
+                os.remove(file_path)
+        return {"message": "🧹 All extracted files have been cleared."}
+    except Exception as e:
+        return {"error": f"Failed to clear files: {str(e)}"}
